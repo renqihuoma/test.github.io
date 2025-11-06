@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跳转中</title>
+</head>
+<body>
+    <script>
+        // Base64解码函数
+        function base64Decode(str) {
+            try {
+                return decodeURIComponent(escape(atob(str)));
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // 获取URL参数
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // 执行跳转
+        function redirectToUrl() {
+            const encodedUrl = getQueryParam('c');
+            if (!encodedUrl) return;
+
+            const originalUrl = base64Decode(encodedUrl);
+            if (originalUrl) {
+                try {
+                    window.location.href = originalUrl;
+                } catch (e) {
+                    // 静默失败，不显示任何提示
+                }
+            }
+        }
+
+        // 页面加载完成后立即执行跳转
+        window.addEventListener('DOMContentLoaded', redirectToUrl);
+        
+        // 为确保快速跳转，额外添加直接执行（DOM未就绪时也可能触发）
+        redirectToUrl();
+    </script>
+</body>
+</html>
