@@ -3,66 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>内容展示</title>
+    <title>正在跳转...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <style>
         html, body {
             height: 100%;
-            overflow: hidden;
             margin: 0;
         }
-        #mainContainer {
+        #container {
             height: 100vh;
             display: flex;
             flex-direction: column;
-        }
-        #header {
-            z-index: 10;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        #contentFrame {
-            flex: 1;
-            border: none;
-            width: 100%;
+            align-items: center;
+            justify-content: center;
+            background-color: #f9fafb;
         }
     </style>
 </head>
 <body>
-    <div id="mainContainer">
-        <!-- 顶部导航栏 -->
-        <div id="header" class="bg-white p-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <i class="fa fa-shield text-primary"></i>
-                <span class="font-medium text-gray-800 text-sm">安全浏览</span>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button id="refreshBtn" class="text-gray-600 hover:text-primary p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-                    <i class="fa fa-refresh"></i>
-                </button>
-                <button id="openNewBtn" class="text-gray-600 hover:text-primary p-1.5 rounded-full hover:bg-gray-100 transition-colors">
-                    <i class="fa fa-external-link"></i>
-                </button>
-            </div>
-        </div>
-        
-        <!-- 加载提示 -->
-        <div id="loading" class="flex-1 flex flex-col items-center justify-center bg-gray-50">
-            <div class="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-            <p class="text-gray-500 text-sm">正在加载内容，请稍候...</p>
-        </div>
-        
-        <!-- 内容展示iframe -->
-        <iframe id="contentFrame" class="hidden"></iframe>
-        
-        <!-- 错误提示 -->
-        <div id="error" class="flex-1 flex flex-col items-center justify-center bg-gray-50 hidden">
-            <i class="fa fa-exclamation-triangle text-yellow-500 text-4xl mb-4"></i>
-            <p class="text-gray-700 font-medium mb-2">无法加载内容</p>
-            <p class="text-gray-500 text-sm mb-4" id="errorMessage">链接格式不正确或无法访问</p>
-            <button id="retryBtn" class="bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors">
-                重试
-            </button>
+    <div id="container">
+        <!-- 跳转提示 -->
+        <div class="text-center">
+            <div class="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-700 mb-2">正在跳转，请稍候...</p>
+            <p class="text-gray-500 text-sm" id="redirectMessage">如果长时间未跳转，请点击下方链接</p>
+            <a id="directLink" href="#" class="text-blue-500 text-sm mt-2 inline-block hover:underline">直接访问</a>
         </div>
     </div>
 
@@ -82,72 +48,38 @@
             return urlParams.get(name);
         }
 
-        // 加载内容到iframe
-        function loadContent() {
+        // 执行跳转
+        function redirectToUrl() {
             const encodedUrl = getQueryParam('c');
-            const contentFrame = document.getElementById('contentFrame');
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
+            const directLink = document.getElementById('directLink');
+            const redirectMessage = document.getElementById('redirectMessage');
             
             if (!encodedUrl) {
-                showError('未找到有效的链接参数');
+                redirectMessage.textContent = '未找到有效的链接参数';
+                directLink.style.display = 'none';
                 return;
             }
 
             const originalUrl = base64Decode(encodedUrl);
-            if (!originalUrl || !originalUrl.startsWith('https://')) {
-                showError('链接格式不正确，仅支持HTTPS链接');
+            if (!originalUrl) {
+                redirectMessage.textContent = '链接格式不正确';
+                directLink.style.display = 'none';
                 return;
             }
 
-            // 显示加载状态
-            loading.classList.remove('hidden');
-            contentFrame.classList.add('hidden');
-            error.classList.add('hidden');
-
-            // 存储原始URL供其他功能使用
-            window.originalUrl = originalUrl;
-
-            // 加载iframe内容
-            contentFrame.src = originalUrl;
+            // 设置直接访问链接
+            directLink.href = originalUrl;
             
-            // 监听iframe加载完成
-            contentFrame.onload = function() {
-                loading.classList.add('hidden');
-                contentFrame.classList.remove('hidden');
-            };
-            
-            // 监听iframe加载错误
-            contentFrame.onerror = function() {
-                showError('无法加载该链接内容，可能是由于跨域限制');
-            };
+            // 尝试自动跳转
+            try {
+                window.location.href = originalUrl;
+            } catch (e) {
+                redirectMessage.textContent = '跳转失败，请点击下方链接';
+            }
         }
 
-        // 显示错误信息
-        function showError(message) {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('contentFrame').classList.add('hidden');
-            document.getElementById('error').classList.remove('hidden');
-            document.getElementById('errorMessage').textContent = message;
-        }
-
-        // 页面加载完成后执行
-        window.addEventListener('DOMContentLoaded', function() {
-            loadContent();
-            
-            // 刷新按钮事件
-            document.getElementById('refreshBtn').addEventListener('click', loadContent);
-            
-            // 在新窗口打开按钮事件
-            document.getElementById('openNewBtn').addEventListener('click', function() {
-                if (window.originalUrl) {
-                    window.open(window.originalUrl, '_blank');
-                }
-            });
-            
-            // 重试按钮事件
-            document.getElementById('retryBtn').addEventListener('click', loadContent);
-        });
+        // 页面加载完成后执行跳转
+        window.addEventListener('DOMContentLoaded', redirectToUrl);
     </script>
 </body>
 </html>
