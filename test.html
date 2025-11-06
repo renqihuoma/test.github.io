@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>获取地址并跳转中</title>
+</head>
+<body>
+    <script>
+        // 获取URL参数
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // 发起GET请求获取新地址并跳转
+        async function fetchAndRedirect() {
+            // 从参数获取接口地址（例如参数名为api）
+            const apiUrl = getQueryParam('c');
+            if (!apiUrl) {
+                console.log('未找到接口地址参数');
+                return;
+            }
+
+            try {
+                // 发起GET请求到接口
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`请求失败: ${response.status}`);
+                }
+
+                // 假设接口返回JSON格式，包含目标地址（例如字段为targetUrl）
+                const data = await response.json();
+                const targetUrl = data.data.subCodeUrl;
+
+                if (targetUrl) {
+                    window.location.href = targetUrl;
+                } else {
+                    console.log('接口未返回有效地址');
+                }
+            } catch (e) {
+                console.error('获取地址失败:', e);
+            }
+        }
+
+        // 页面加载后执行
+        window.addEventListener('DOMContentLoaded', fetchAndRedirect);
+        // 立即尝试执行，加快流程
+        fetchAndRedirect();
+    </script>
+</body>
+</html>
