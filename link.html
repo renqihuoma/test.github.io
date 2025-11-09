@@ -10,60 +10,83 @@
     <button id="retryBtn" style="display: none;" onclick="fetchAndRedirect()">重试</button>
 
     <script>
-        // 配置：API接口地址（必须替换为你的实际接口地址）
-        const API_URL = 'https://api.rqhm100.cc/link/kjladj'; 
-        // 配置：接口返回的跳转地址字段名（如接口返回JSON格式：{ "redirectUrl": "xxx" }，则填"redirectUrl"；纯文本则留空）
-        const URL_FIELD_NAME = 'url'; // 纯文本返回时改为 ''
+        // 核心配置（已适配接口返回格式：data.subCodeUrl）
+        const API_CONFIG = {
+            url: 'https://api.rqhm100.cc/link/kjladj',
+            urlField: 'data.subCodeUrl', // 接口返回的跳转地址字段（多层嵌套）
+            timeout: 8000,
+            fallbackUrl: 'https://www.baidu.com'
+        };
 
-        // 发送GET请求获取地址并跳转
-        function fetchAndRedirect() {
+        let isRequesting = false;
+
+        // 提取嵌套JSON字段的工具函数
+        function getNestedValue(data, fieldPath) {
+            return fieldPath.split('.').reduce((obj, key) => {
+                return obj && obj[key] ? obj[key] : '';
+            }, data);
+        }
+
+        async function fetchAndRedirect() {
             const statusEl = document.getElementById('status');
             const retryBtn = document.getElementById('retryBtn');
 
-            // 重置状态
+            if (isRequesting) return;
+            isRequesting = true;
+
             statusEl.textContent = '正在获取跳转地址...';
             retryBtn.style.display = 'none';
 
             try {
-                // 发送GET请求到API
-                fetch(API_URL, {
-                    method: 'GET',
-                    mode: 'cors', // 跨域时启用（根据实际情况调整）
-                    credentials: 'omit' // 不需要携带Cookie时使用
-                })
-                .then(response => {
-                    // 验证响应状态
-                    if (!response.ok) throw new Error(`HTTP错误：${response.status}`);
-                    // 根据接口返回格式选择解析方式
-                    return URL_FIELD_NAME ? response.json() : response.text();
-                })
-                .then(data => {
-                    // 提取跳转地址
-                    const targetUrl = URL_FIELD_NAME ? data[URL_FIELD_NAME] : data;
+                // 超时控制
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
 
-                    // 有地址则直接跳转，无地址则提示
-                    if (targetUrl) {
-                        statusEl.textContent = '正在跳转...';
-                        window.location.href = targetUrl;
-                    } else {
-                        throw new Error('接口未返回有效跳转地址');
-                    }
-                })
-                .catch(error => {
-                    // 错误处理
-                    console.error('跳转异常:', error);
-                    statusEl.textContent = `跳转失败：${error.message}`;
-                    retryBtn.style.display = 'inline-block';
+                // 原生fetch请求
+                const response = await fetch(API_CONFIG.url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
+
+                // 状态码校验
+                if (!response.ok) throw new Error(`状态码：${response.status}`);
+
+                // 解析JSON
+                const resData = await response.json();
+
+                // 提取并验证跳转地址
+                const targetUrl = getNestedValue(resData, API_CONFIG.urlField).trim();
+                if (!targetUrl || !/^https?:\/\/.+/.test(targetUrl)) {
+                    throw new Error('未返回有效跳转地址');
+                }
+
+                // 执行跳转
+                statusEl.textContent = '正在跳转...';
+                setTimeout(() => window.location.href = targetUrl, 300);
+
             } catch (error) {
-                statusEl.textContent = '跳转失败';
-                retryBtn.style.display = 'inline-block';
+                console.error('跳转异常:', error);
+                statusEl.textContent = `跳转失败：${error.message}`;
+                retryBtn.style.display = 'inline';
+
+                // 兜底跳转
+                setTimeout(() => {
+                    if (statusEl.textContent.includes('失败')) {
+                        statusEl.textContent = '即将跳转至备用地址...';
+                        setTimeout(() => window.location.href = API_CONFIG.fallbackUrl, 1000);
+                    }
+                }, 3000);
+
+            } finally {
+                isRequesting = false;
             }
         }
 
-        // 优先执行（不等待DOM就绪）
-        fetchAndRedirect();
-        // 兜底：DOM就绪后再执行一次
+        // DOM就绪后执行
         window.addEventListener('DOMContentLoaded', fetchAndRedirect);
     </script>
 </body>
