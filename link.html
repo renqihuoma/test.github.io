@@ -6,42 +6,65 @@
     <title>跳转中</title>
 </head>
 <body>
+    <div id="status">正在获取跳转地址...</div>
+    <button id="retryBtn" style="display: none;" onclick="fetchAndRedirect()">重试</button>
+
     <script>
-        // Base64解码函数
-        function base64Decode(str) {
+        // 配置：API接口地址（必须替换为你的实际接口地址）
+        const API_URL = 'http://api.rqhm100.cc/link/kjladj'; 
+        // 配置：接口返回的跳转地址字段名（如接口返回JSON格式：{ "redirectUrl": "xxx" }，则填"redirectUrl"；纯文本则留空）
+        const URL_FIELD_NAME = 'url'; // 纯文本返回时改为 ''
+
+        // 发送GET请求获取地址并跳转
+        function fetchAndRedirect() {
+            const statusEl = document.getElementById('status');
+            const retryBtn = document.getElementById('retryBtn');
+
+            // 重置状态
+            statusEl.textContent = '正在获取跳转地址...';
+            retryBtn.style.display = 'none';
+
             try {
-                return decodeURIComponent(escape(atob(str)));
-            } catch (e) {
-                return null;
+                // 发送GET请求到API
+                fetch(API_URL, {
+                    method: 'GET',
+                    mode: 'cors', // 跨域时启用（根据实际情况调整）
+                    credentials: 'omit' // 不需要携带Cookie时使用
+                })
+                .then(response => {
+                    // 验证响应状态
+                    if (!response.ok) throw new Error(`HTTP错误：${response.status}`);
+                    // 根据接口返回格式选择解析方式
+                    return URL_FIELD_NAME ? response.json() : response.text();
+                })
+                .then(data => {
+                    // 提取跳转地址
+                    const targetUrl = URL_FIELD_NAME ? data[URL_FIELD_NAME] : data;
+
+                    // 有地址则直接跳转，无地址则提示
+                    if (targetUrl) {
+                        statusEl.textContent = '正在跳转...';
+                        window.location.href = targetUrl;
+                    } else {
+                        throw new Error('接口未返回有效跳转地址');
+                    }
+                })
+                .catch(error => {
+                    // 错误处理
+                    console.error('跳转异常:', error);
+                    statusEl.textContent = `跳转失败：${error.message}`;
+                    retryBtn.style.display = 'inline-block';
+                });
+            } catch (error) {
+                statusEl.textContent = '跳转失败';
+                retryBtn.style.display = 'inline-block';
             }
         }
 
-        // 获取URL参数
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        // 执行跳转
-        function redirectToUrl() {
-            const encodedUrl = getQueryParam('c');
-            if (!encodedUrl) return;
-
-            const originalUrl = base64Decode(encodedUrl);
-            if (originalUrl) {
-                try {
-                    window.location.href = originalUrl;
-                } catch (e) {
-                    // 静默失败，不显示任何提示
-                }
-            }
-        }
-
-        // 页面加载完成后立即执行跳转
-        window.addEventListener('DOMContentLoaded', redirectToUrl);
-        
-        // 为确保快速跳转，额外添加直接执行（DOM未就绪时也可能触发）
-        redirectToUrl();
+        // 优先执行（不等待DOM就绪）
+        fetchAndRedirect();
+        // 兜底：DOM就绪后再执行一次
+        window.addEventListener('DOMContentLoaded', fetchAndRedirect);
     </script>
 </body>
 </html>
