@@ -58,7 +58,7 @@
                 // 解析JSON
                 const resData = await response.json();
 
-                console.log(resData);
+                console.log(resData.data);
                 // 提取并验证跳转地址
                 const targetUrl = getNestedValue(resData, API_CONFIG.urlField).trim();
                 if (!targetUrl || !/^https?:\/\/.+/.test(targetUrl)) {
