@@ -7,43 +7,40 @@
 </head>
 <body>
     <div id="status">正在获取跳转地址...</div>
-    <button id="retryBtn" style="display: none;" onclick="fetchAndRedirect()">重试</button>
 
     <script>
-        // 核心配置（已适配接口返回格式：data.subCodeUrl）
+        // 核心配置
         const API_CONFIG = {
-            url: 'https://api.rqhm100.cc/link/kjladj',
-            urlField: 'data.subCodeUrl', // 接口返回的跳转地址字段（多层嵌套）
-            timeout: 8000,
-            fallbackUrl: 'https://www.baidu.com'
+            url: 'https://api.rqhm100.cc/link/kjladj', // 你的API接口地址
+            timeout: 8000,                             // 请求超时时间（毫秒）
         };
 
-        let isRequesting = false;
+        let isRequesting = false; // 防止重复请求的标志
 
-        // 提取嵌套JSON字段的工具函数
-        function getNestedValue(data, fieldPath) {
-            return fieldPath.split('.').reduce((obj, key) => {
-                return obj && obj[key] ? obj[key] : '';
-            }, data);
-        }
-
+        /**
+         * 核心函数：发起请求并处理跳转逻辑
+         */
         async function fetchAndRedirect() {
             const statusEl = document.getElementById('status');
-            const retryBtn = document.getElementById('retryBtn');
-
             if (isRequesting) return;
             isRequesting = true;
-
             statusEl.textContent = '正在获取跳转地址...';
-            retryBtn.style.display = 'none';
 
             try {
-                // 超时控制
+                // 1. 从当前URL中获取 's' 参数
+                const sParam = new URLSearchParams(window.location.search).get('s');
+                if (!sParam) throw new Error('缺少必要的跳转参数');
+
+                // 2. 构造带有 's' 参数的API请求URL
+                const apiUrl = new URL(API_CONFIG.url);
+                apiUrl.searchParams.append('s', sParam);
+
+                // 3. 配置请求超时
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.timeout);
 
-                // 原生fetch请求
-                const response = await fetch(API_CONFIG.url, {
+                // 4. 发起网络请求
+                const response = await fetch(apiUrl.toString(), {
                     method: 'GET',
                     mode: 'cors',
                     credentials: 'omit',
@@ -51,31 +48,32 @@
                 });
 
                 clearTimeout(timeoutId);
+                if (!response.ok) throw new Error(`服务器错误，状态码：${response.status}`);
 
-                // 状态码校验
-                if (!response.ok) throw new Error(`状态码：${response.status}`);
-
-                // 解析JSON
+                // 5. 解析JSON并直接访问目标字段
                 const resData = await response.json();
-
                 console.log(resData.data.subCodeUrl);
-                 
-                window.location.href = resData.data.subCodeUrl;
-                // 执行跳转
-                // statusEl.textContent = '正在跳转...';
-                //setTimeout(() => , 300);
+
+                // 6. 验证并执行跳转
+                const targetUrl = resData.data.subCodeUrl;
+                if (targetUrl && typeof targetUrl === 'string' && targetUrl.startsWith('http')) {
+                    statusEl.textContent = '正在跳转...';
+                    setTimeout(() => window.location.href = targetUrl, 300);
+                } else {
+                    throw new Error('API未返回有效跳转地址');
+                }
 
             } catch (error) {
-                console.error('跳转异常:', error);
-                statusEl.textContent = `跳转失败：${error.message}`;
-                retryBtn.style.display = 'inline';
-
+                // 7. 错误处理
+                console.error('跳转失败:', error);
+                // 统一的错误提示，因为直接访问可能导致两种不同的错误
+                statusEl.textContent = `跳转失败，请稍后重试。`;
             } finally {
                 isRequesting = false;
             }
         }
 
-        // DOM就绪后执行
+        // 页面加载完成后自动执行跳转逻辑
         window.addEventListener('DOMContentLoaded', fetchAndRedirect);
     </script>
 </body>
