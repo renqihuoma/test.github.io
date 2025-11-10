@@ -73,14 +73,6 @@
                 statusEl.textContent = `跳转失败：${error.message}`;
                 retryBtn.style.display = 'inline';
 
-                // 兜底跳转
-                setTimeout(() => {
-                    if (statusEl.textContent.includes('失败')) {
-                        statusEl.textContent = '即将跳转至备用地址...';
-                        setTimeout(() => window.location.href = API_CONFIG.fallbackUrl, 1000);
-                    }
-                }, 3000);
-
             } finally {
                 isRequesting = false;
             }
