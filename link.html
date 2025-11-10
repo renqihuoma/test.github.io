@@ -11,7 +11,7 @@
     <script>
         // 核心配置
         const API_CONFIG = {
-            url: 'https://api.rqhm100.cc/link/kjladj', // 你的API接口地址
+            url: 'https://api.rqhm100.cc/link/', // 你的API接口地址
             timeout: 8000,                             // 请求超时时间（毫秒）
         };
 
@@ -32,8 +32,8 @@
                 if (!sParam) throw new Error('缺少必要的跳转参数');
 
                 // 2. 构造带有 's' 参数的API请求URL
-                const apiUrl = new URL(API_CONFIG.url);
-                apiUrl.searchParams.append('s', sParam);
+                const apiUrl = new URL(API_CONFIG.url+sParam);
+                //apiUrl.searchParams.append('s', sParam);
 
                 // 3. 配置请求超时
                 const controller = new AbortController();
